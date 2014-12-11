@@ -1,0 +1,17 @@
+[Project Name]/           - 專案根目錄。
+  DAT/                    - 專案用檔案資料夾。
+    cache/                - 圖片快取 & 縮圖存放處。
+  DOC/                    - 文件存放處。
+    DeveloperNote.txt     - 開發筆記。
+    FolderStructure.txt   - 此文件，資料夾結構說明。
+  DSN/                    - 美術設計相關檔案存放處。
+  RLS/                    - 新版本壓縮檔發佈存放處。
+  RSC/                    - 第三方套件、程式檔案存放處。
+  SRC/                    - 專案原始碼存放處。
+  TMP/                    - 暫存資料夾。
+  UTL/                    - 工具程式檔存放處。
+  WEB/                    - 網站 Server 端根目錄。
+    resource/             - 用於網站的第三方函式庫存放處。
+    www/                  - 網站 Client 端根目錄。
+      image/              - 網站用圖。
+      resource/           - 網站引用的第三方程式檔。

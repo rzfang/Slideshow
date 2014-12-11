@@ -1,0 +1,547 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv='content-type' content='text/html; charset=utf-8'/>
+    <meta name='description' content=''/>
+    <meta name='keywords' content=''/>
+    <meta name='author' content=''/>
+    <script type='text/javascript' src='https://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js'></script>
+    <script type='text/javascript'>
+    <!--
+      var NowIdx = 0,
+          ImgA = [],
+          Way = 0,
+          Anm; // 'Anm' = Animation object.
+
+      $(function ()
+        {
+          var Cvs = $('#Sldshw')[0],
+              SldWayA = [];
+
+          Anm = new Animation(Cvs, []);
+
+          SldWayA.push(Normal(Anm));
+          SldWayA.push(Slide(Anm));
+          SldWayA.push(Slide2(Anm));
+          SldWayA.push(Flip(Anm));
+          SldWayA.push(Broken(Anm));
+
+          $('#ImgBx li').each(function (Idx, Nd) {
+              var Img = new Image();
+
+              Img.src = $(this).css('backgroundImage').replace('url("', '').replace('")', '');
+
+              ImgA.push(Img);
+            });
+
+          $('#FctnBx').on('click',
+                          'input[type=radio]',
+                          function (Evt)
+                          {
+                            Way = $(this).parent().index();
+
+                            Anm.CallbackSet('Start', SldWayA[Way].Reset);
+                          })
+                      .children('input:button').on(
+                        'click',
+                        function (Evt)
+                        {
+                          NowIdx = (NowIdx + 1) % ImgA.length;
+
+                          Anm.ItemDrawAdd(SldWayA[Way].Draw);
+                          Anm.ItemDrawDel(0);
+                          Anm.Start();
+                        });
+
+          Way = $('#FctnBx input:radio:checked').parent().index();
+
+          Anm.CallbackSet('Start', SldWayA[Way].Reset);
+          Anm.ItemDrawAdd(SldWayA[0].Draw);
+          Anm.Start();
+          Anm.Stop();
+        });
+
+      /* make a Random Sequence.
+        'Lth' = Length.
+        'Dst' = Distance between units before and after.
+        'St' = Start.
+        Return: Array of random Sequence. */
+      function RandomSequence(Lth, St = 0, Dst = 1)
+      {
+        var A = []; // 'A' = Array.
+
+        for (var i = 0; i < Lth; i++)
+        { A[i] = St + (i * Dst); }
+
+        for (var i = 0; i < Lth; i++)
+        {
+          for (j = (i + 1); j < Lth; j++)
+          {
+            var R = Math.floor(Math.random() * Lth),
+                T = A[i];
+
+            A[i] = A[R];
+            A[R] = T;
+          }
+        }
+
+        return A;
+      }
+
+      /* class Animation.
+        'DO' = DOM Object.
+        'ItmDrwFA' = Item Draw Function Array. each function gets values: (Ctx, Sz).
+          'Ctx' = canvas Context object.
+          'Sz' = Size object includes {'W', 'H'};
+        'BgDrwF' = Background Draw Function. optional. */
+      function Animation (DO, ItmDrwFA, BgDrwF)
+      {
+        if (typeof DO !== 'object' || DO === null || typeof ItmDrwFA !== 'object' || typeof ItmDrwFA.length !== 'number')
+        {
+          console.log('Animation is not going to run.');
+
+          return;
+        }
+
+        var This = this;
+
+        // properties set.
+        this.DOM = DO;
+        this.Ctx = DO.getContext('2d'); // 'Ctx' = Context object.
+        this.ScnSz = {'W': DO.width, 'H': DO.height}; // 'ScnSz' = Scenary Size.
+        this.RunB = false;
+        this.BgDrwB = true; // 'BgDrwB' = Background Draw Boolean flag.
+        this.ItmDrwFA = []; // Array of Item Draw Function.
+        this.ClbkFO = {'Start': function () {}, 'Stop': function () {}}; // Object of Callback Function.
+
+        // methods set.
+        this.Start = Start;
+        this.Stop = Stop;
+        this.SizeGet = function () { return this.ScnSz; };
+        this.BackgroundDraw = function (Ctx, Sz) {};
+        this.FrameDraw = FrameDraw;
+        this.ItemDrawAdd = ItemDrawAdd;
+        this.ItemDrawDel = ItemDrawDel;
+        this.CallbackSet = CallbackSet;
+
+        for (var i = 0; i < ItmDrwFA.length; i++)
+        {
+          if (typeof ItmDrwFA[i] === 'function')
+          { this.ItmDrwFA.push(ItmDrwFA[i]); }
+        }
+
+        if (typeof BgDrwF === 'function')
+        { this.BackgroundDraw = BgDrwF; }
+        else
+        {
+          this.BackgroundDraw = function ()
+            {
+              this.Ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+
+              this.Ctx.fillRect(0, 0, this.ScnSz.W, this.ScnSz.H);
+            };
+        }
+
+        return;
+
+        function Start ()
+        {
+          if (this.ClbkFO.Start && typeof this.ClbkFO.Start === 'function')
+          { this.ClbkFO.Start(this.Ctx, this.ScnSz); }
+
+          this.RunB = true;
+
+          this.FrameDraw();
+        }
+
+        function Stop ()
+        {
+          if (this.ClbkFO.Stop && typeof this.ClbkFO.Stop === 'function')
+          { this.ClbkFO.Stop(this.Ctx, this.ScnSz); }
+
+          this.RunB = false;
+        }
+
+        function FrameDraw ()
+        {
+          if (!this.RunB)
+          { return; }
+          
+          if (this.BgDrwB)
+          { this.BackgroundDraw(this.Ctx, this.ScnSz); }
+
+          for (var i = 0 ; i < this.ItmDrwFA.length; i++)
+          { this.ItmDrwFA[i](this.Ctx, this.ScnSz); }
+
+          setTimeout(function () { This.FrameDraw(); }, 33);
+        }
+
+        function ItemDrawAdd (ItmDrwF)
+        {
+          if (typeof ItmDrwF !== 'function')
+          { return -1; }
+
+          this.ItmDrwFA.push(ItmDrwF);
+
+          return 0;
+        }
+
+        function ItemDrawDel (Idx)
+        {
+          if (typeof Idx !== 'number' || Idx >= this.ItmDrwFA.length)
+          { return -1; }
+
+          this.ItmDrwFA.splice(Idx, 1);
+        }
+
+        function CallbackSet (EvtNm, ClbckF)
+        {
+          if (!EvtNm || typeof EvtNm !== 'string' || !ClbckF || typeof ClbckF !== 'function')
+          { return false; }
+
+          for (var i in this.ClbkFO)
+          {
+            if (!this.ClbkFO.hasOwnProperty(i))
+            { continue; }
+
+            if (i === EvtNm)
+            {
+              this.ClbkFO[i] = ClbckF;
+
+              break;
+            }
+          }
+
+          return true;
+        }
+      }
+
+      function NewImageSizeGet (ScnSz, ImgIdx)
+      {
+        if (!ScnSz || typeof ScnSz !== 'object' || !ScnSz.W || typeof ScnSz.W !== 'number' || !ScnSz.H || typeof ScnSz.H !== 'number' ||
+            typeof ImgIdx !== 'number' || ImgIdx < 0)
+        { return null; }
+
+        var ImgWHRto = ImgA[ImgIdx].width / ImgA[ImgIdx].height, // 'ImgWHRto' = Image Width/Height Ratio.
+            CvsWHRto = ScnSz.W / ScnSz.H, // 'CvsWHRto' = Canvas Width/Height Ratio.
+            NewImgSz = {'W': 0, 'H': 0}, // 'NewImgSz' New Image Size.
+            ImgCvsRto; // 'ImgCvsRto' = Image Canvas Ratio.
+
+        if (ImgWHRto > CvsWHRto)
+        { ImgCvsRto =  ScnSz.W / ImgA[ImgIdx].width; }
+        else if (ImgWHRto < CvsWHRto)
+        { ImgCvsRto = ScnSz.H / ImgA[ImgIdx].height; }
+
+        NewImgSz.W = ImgA[ImgIdx].width * ImgCvsRto;
+        NewImgSz.H = ImgA[ImgIdx].height * ImgCvsRto;
+
+        return NewImgSz;
+      }
+
+      function Normal (Anm)
+      {
+        return {
+          'Reset': function () {},
+          'Draw': function (Ctx, Sz)
+            {
+              var ImgWHRto = ImgA[NowIdx].width / ImgA[NowIdx].height, // 'ImgWHRto' = Image Width/Height Ratio.
+                  CvsWHRto = Sz.W / Sz.H, // 'CvsWHRto' = Canvas Width/Height Ratio.
+                  NewImgSz = {'W': 0, 'H': 0}, // 'NewImgSz' New Image Size.
+                  ImgCvsRto; // 'ImgCvsRto' = Image Canvas Ratio.
+
+              if (ImgWHRto > CvsWHRto)
+              { ImgCvsRto =  Sz.W / ImgA[NowIdx].width; }
+              else if (ImgWHRto < CvsWHRto)
+              { ImgCvsRto = Sz.H / ImgA[NowIdx].height; }
+
+              NewImgSz.W = ImgA[NowIdx].width * ImgCvsRto;
+              NewImgSz.H = ImgA[NowIdx].height * ImgCvsRto;
+
+              Ctx.drawImage(ImgA[NowIdx],
+                            0, 0, ImgA[NowIdx].width, ImgA[NowIdx].height, // image X, Y, W, H.
+                            (Sz.W - NewImgSz.W) / 2, (Sz.H - NewImgSz.H) / 2, NewImgSz.W, NewImgSz.H); // canvas X, Y, W, H.
+
+              Anm.Stop();
+            }};
+      }
+
+      function Slide (Anm)
+      {
+        var Spd = 50, // 'Spd' = Speed.
+            NowDst = 0, // 'NowDst' = Now Distance.
+            LstIdx, // 'LstIdx' = Last image Index.
+            LstImgNewSz, // 'LstImgNewSz' = Last Image New Size.
+            NowImgNewSz; // 'NowImgNewSz' = Now Image New Size.
+
+        return {
+          'Reset': function (Ctx, Sz)
+            {
+              NowDst = 0;
+              LstIdx = (NowIdx - 1 + ImgA.length) % ImgA.length;
+              LstImgNewSz = NewImageSizeGet(Sz, LstIdx);
+              NowImgNewSz = NewImageSizeGet(Sz, NowIdx);
+            },
+          'Draw': function (Ctx, Sz)
+            {
+              Ctx.drawImage(ImgA[LstIdx],
+                            0, 0, ImgA[LstIdx].width, ImgA[LstIdx].height, // image X, Y, W, H.
+                            (Sz.W - LstImgNewSz.W) / 2 + NowDst, (Sz.H - LstImgNewSz.H) / 2, LstImgNewSz.W, LstImgNewSz.H); // canvas X, Y, W, H.
+
+              Ctx.drawImage(ImgA[NowIdx],
+                        0, 0, ImgA[NowIdx].width, ImgA[NowIdx].height, // image X, Y, W, H.
+                        (Sz.W - NowImgNewSz.W) / 2 + NowDst + Sz.W, (Sz.H - NowImgNewSz.H) / 2, NowImgNewSz.W, NowImgNewSz.H); // canvas X, Y, W, H.
+
+              NowDst -= Spd;
+
+              if (NowDst < (Sz.W * -1))
+              {
+                Anm.Stop();
+                Anm.BackgroundDraw();
+                Ctx.drawImage(ImgA[NowIdx],
+                        0, 0, ImgA[NowIdx].width, ImgA[NowIdx].height, // image X, Y, W, H.
+                        (Sz.W - NowImgNewSz.W) / 2, (Sz.H - NowImgNewSz.H) / 2, NowImgNewSz.W, NowImgNewSz.H); // canvas X, Y, W, H.
+              }
+            }};
+      }
+
+      function Slide2 (Anm)
+      {
+        var Step = 0, // 0: to zoom out. 1: move. 2: zoom in.
+            ZmSpd = 0.05, // 'ZmSpd' = Zoom Speed.
+            NowZm = 1, // 'NowZm' = Now Zoom percent.
+            DstSpd = 50, // 'DstSpd' = Distance Speed.
+            NowDst = 0, // 'NowDst' = Now Distance.
+            LstIdx, // 'LstIdx' = Last image Index.
+            LstImgNewSz, // 'LstImgNewSz' = Last Image New Size.
+            NowImgNewSz; // 'NowImgNewSz' = Now Image New Size.
+
+        return {
+          'Reset': function (Ctx, Sz)
+            {
+              Step = 0;
+              NowZm = 1;
+              NowDst = 0;
+              LstIdx = (NowIdx - 1 + ImgA.length) % ImgA.length;
+              LstImgNewSz = NewImageSizeGet(Sz, LstIdx);
+              NowImgNewSz = NewImageSizeGet(Sz, NowIdx);
+            },
+          'Draw': function (Ctx, Sz)
+            {
+              switch (Step)
+              {
+                case 0:   ZoomOut(Ctx, Sz, 0.7, ZmSpd); break;
+                case 1:   Move(Ctx, Sz);                break;
+                case 2:   ZoomIn(Ctx, Sz, ZmSpd);       break;
+                default:  Anm.Stop();
+              }
+            }};
+
+        function ZoomOut (Ctx, Sz, TgtZm, ZmSpd)
+        {
+          var LstZmSz = {'W': LstImgNewSz.W * NowZm, 'H': LstImgNewSz.H * NowZm};
+
+          Ctx.drawImage(ImgA[LstIdx],
+                        0, 0, ImgA[LstIdx].width, ImgA[LstIdx].height, // image X, Y, W, H.
+                        (Sz.W -  LstZmSz.W) / 2, (Sz.H -  LstZmSz.H) / 2,  LstZmSz.W,  LstZmSz.H); // canvas X, Y, W, H.
+
+          NowZm -= ZmSpd;
+
+          if (NowZm <= TgtZm)
+          {
+            Step++;
+            NowZm = TgtZm;
+          }
+        }
+
+        function ZoomIn (Ctx, Sz, ZmSpd)
+        {
+          var NowZmSz = {'W': NowImgNewSz.W * NowZm, 'H': NowImgNewSz.H * NowZm};
+
+          Ctx.drawImage(ImgA[NowIdx],
+                        0, 0, ImgA[NowIdx].width, ImgA[NowIdx].height, // image X, Y, W, H.
+                        (Sz.W -  NowZmSz.W) / 2, (Sz.H -  NowZmSz.H) / 2,  NowZmSz.W,  NowZmSz.H); // canvas X, Y, W, H.
+
+          NowZm += ZmSpd;
+
+          if (NowZm >= 1)
+          {
+            Anm.Stop();
+            Anm.BackgroundDraw();
+            Ctx.drawImage(ImgA[NowIdx],
+                          0, 0, ImgA[NowIdx].width, ImgA[NowIdx].height, // image X, Y, W, H.
+                          (Sz.W -  NowImgNewSz.W) / 2, (Sz.H -  NowImgNewSz.H) / 2,  NowImgNewSz.W,  NowImgNewSz.H); // canvas X, Y, W, H.
+          }
+        }
+
+        function Move (Ctx, Sz)
+        {
+          var LstZmSz = {'W': LstImgNewSz.W * NowZm, 'H': LstImgNewSz.H * NowZm},
+              NowZmSz = {'W': NowImgNewSz.W * NowZm, 'H': NowImgNewSz.H * NowZm};
+
+          Ctx.drawImage(ImgA[LstIdx],
+                        0, 0, ImgA[LstIdx].width, ImgA[LstIdx].height, // image X, Y, W, H.
+                        (Sz.W -  LstZmSz.W) / 2 + NowDst, (Sz.H -  LstZmSz.H) / 2,  LstZmSz.W,  LstZmSz.H); // canvas X, Y, W, H.
+          Ctx.drawImage(ImgA[NowIdx],
+                        0, 0, ImgA[NowIdx].width, ImgA[NowIdx].height, // image X, Y, W, H.
+                        (Sz.W -  NowZmSz.W) / 2 + NowDst + Sz.W, (Sz.H -  NowZmSz.H) / 2,  NowZmSz.W,  NowZmSz.H); // canvas X, Y, W, H.
+
+          NowDst -= DstSpd;
+
+          if (NowDst <= (Sz.W * -1))
+          {
+            Step++;
+            NowDst = Sz.W * -1;
+
+            Anm.BackgroundDraw();
+            Ctx.drawImage(ImgA[NowIdx],
+                          0, 0, ImgA[NowIdx].width, ImgA[NowIdx].height, // image X, Y, W, H.
+                          (Sz.W -  NowZmSz.W) / 2, (Sz.H -  NowZmSz.H) / 2,  NowZmSz.W,  NowZmSz.H); // canvas X, Y, W, H.
+          }
+        }
+      }
+
+      function Flip (Anm)
+      {
+        var SkwRdn = 1, // 'SkwRdn' = Skew Radian.
+            Opct = 0, // 'Opct' = opacity.
+            LstIdx, // 'LstIdx' = Last image Index.
+            LstImgNewSz, // 'LstImgNewSz' = Last Image New Size.
+            NowImgNewSz, // 'NowImgNewSz' = Now Image New Size.
+            LstOfst = {'X': 0, 'Y': 0}, // 'LstOfst.X' = Last Offset X.
+            NowOfst = {'X': 0, 'Y': 0}; // 'NowOfst.X' = Now Offset X.
+
+        return {
+          'Reset': function (Ctx, Sz)
+            {
+              SkwRdn = 1;
+              Opct = 0;
+              LstIdx = (NowIdx - 1 + ImgA.length) % ImgA.length;
+              LstImgNewSz = NewImageSizeGet(Sz, LstIdx);
+              NowImgNewSz = NewImageSizeGet(Sz, NowIdx);
+              LstOfst.X = (Sz.W - LstImgNewSz.W) / 2;
+              LstOfst.Y = (Sz.H - LstImgNewSz.H) / 2;
+              NowOfst.X = (Sz.W - NowImgNewSz.W) / 2;
+              NowOfst.Y = (Sz.H - NowImgNewSz.H) / 2;
+            },
+          'Draw': function (Ctx, Sz)
+            {
+              Ctx.setTransform(SkwRdn, 0, 0, 1, 0, 0);
+              // Anm.BackgroundDraw(); save some performance.
+              Ctx.drawImage(ImgA[LstIdx],
+                            0, 0, ImgA[LstIdx].width, ImgA[LstIdx].height, // image X, Y, W, H.
+                            LstOfst.X, LstOfst.Y, LstImgNewSz.W, LstImgNewSz.H); // canvas X, Y, W, H.
+
+              Ctx.fillStyle = 'rgba(0, 0, 0, ' + Opct.toString() + ')';
+              Ctx.fillRect(LstOfst.X, LstOfst.Y, LstImgNewSz.W, LstImgNewSz.H);
+
+              Ctx.setTransform(1 - SkwRdn + 0.0000001, 0, 0, 1, Sz.W * SkwRdn, 0); // 0.0000001 to scape firefox bug, https://bugzilla.mozilla.org/show_bug.cgi?id=612033
+              Ctx.drawImage(ImgA[NowIdx],
+                            0, 0, ImgA[NowIdx].width, ImgA[NowIdx].height, // image X, Y, W, H.
+                            NowOfst.X, NowOfst.Y, NowImgNewSz.W, NowImgNewSz.H); // canvas X, Y, W, H.
+
+              Ctx.fillStyle = 'rgba(0, 0, 0, ' + (1 - Opct).toString() + ')';
+              Ctx.fillRect(NowOfst.X, NowOfst.Y, NowImgNewSz.W, NowImgNewSz.H);
+
+              if (SkwRdn < 0)
+              {
+                Ctx.setTransform(1, 0, 0, 1, 0, 0);
+                Anm.Stop();
+                Anm.BackgroundDraw();
+                Ctx.drawImage(ImgA[NowIdx],
+                              0, 0, ImgA[NowIdx].width, ImgA[NowIdx].height, // image X, Y, W, H.
+                              (Sz.W - NowImgNewSz.W) / 2, (Sz.H - NowImgNewSz.H) / 2, NowImgNewSz.W, NowImgNewSz.H); // canvas X, Y, W, H.
+              }
+
+              SkwRdn -= 0.05;
+              Opct += 0.05;
+            }};
+      }
+
+      function Broken (Anm)
+      {
+        var BfrCvs = $(Anm.DOM).clone()[0],
+            BfrCtx = BfrCvs.getContext('2d'),
+            BlkWH = 100, // 'BlkWH' = Block Width Height.
+            BlkA = [], // 'BlkA' = Block Array.
+            RdmSqcA = [], // 'RdmSqcA' = Random Sequence Array.
+            NowBlkIdx = 0, // 'NowBlkIdx' = Now Block Index.
+            LstIdx, // 'LstIdx' = Last image Index.
+            LstImgNewSz, // 'LstImgNewSz' = Last Image New Size.
+            NowImgNewSz; // 'NowImgNewSz' = Now Image New Size.
+
+        return {
+            'Reset': function (Ctx, Sz)
+              {
+                var LthX = Math.ceil(Sz.W / BlkWH), // 'LthX' = row Length.
+                    LthY = Math.ceil(Sz.H / BlkWH); // 'LthY' = column Length.
+
+                BlkA = [];
+                NowBlkIdx = 0;
+                LstIdx = (NowIdx - 1 + ImgA.length) % ImgA.length;
+                LstImgNewSz = NewImageSizeGet(Sz, LstIdx);
+                NowImgNewSz = NewImageSizeGet(Sz, NowIdx);
+
+                for (var i = 0; i < LthY; i++)
+                {
+                  for (var j = 0; j < LthX; j++)
+                  { BlkA.push({'X': j, 'Y': i}); }
+                }
+
+                RdmSqcA = RandomSequence(BlkA.length);
+                Anm.BgDrwB = false;
+
+                BfrCtx.fillStyle = 'rgba(255, 255, 255, 1)';
+
+                BfrCtx.fillRect(0, 0, Sz.W, Sz.H);
+                BfrCtx.drawImage(ImgA[NowIdx],
+                                 0, 0, ImgA[NowIdx].width, ImgA[NowIdx].height, // image X, Y, W, H.
+                                 (Sz.W - NowImgNewSz.W) / 2, (Sz.H - NowImgNewSz.H) / 2, NowImgNewSz.W, NowImgNewSz.H); // canvas X, Y, W, H.
+              },
+            'Draw': function(Ctx, Sz)
+              {
+                Ctx.drawImage(BfrCvs,
+                              BlkA[RdmSqcA[NowBlkIdx]].X * BlkWH, BlkA[RdmSqcA[NowBlkIdx]].Y * BlkWH, BlkWH, BlkWH, // image X, Y, W, H.
+                              BlkA[RdmSqcA[NowBlkIdx]].X * BlkWH, BlkA[RdmSqcA[NowBlkIdx]].Y * BlkWH, BlkWH, BlkWH);
+
+                if (NowBlkIdx >= (BlkA.length - 1))
+                {
+                  Anm.Stop();
+                  Anm.BgDrwB = true;
+                }
+
+                NowBlkIdx++;
+              }
+          };
+      }
+    -->
+    </script>
+  </head>
+  <body>
+    <ul id='ImgBx' style='position: absolute; visibility: hidden;'>
+      <li style='background-image: url(1.jpeg);'></li>
+      <li style='background-image: url(2.jpeg);'></li>
+      <li style='background-image: url(3.jpg);'></li>
+      <li style='background-image: url(4.jpg);'></li>
+      <li style='background-image: url(5.jpg);'></li>
+      <li style='background-image: url(6.jpg);'></li>
+      <li style='background-image: url(7.jpg);'></li>
+      <li style='background-image: url(8.jpg);'></li>
+    </ul>
+    <div style='text-align: center;'>
+      <canvas id='Sldshw' width='640' height='480' style='border: 1px solid;'>您的瀏覽器不支援動畫。</canvas>
+    </div>
+    <div id='FctnBx' style='text-align: center;'>
+      <input type='button' value='change'/>
+      <div>
+        switch way:
+        <label><input type='radio' name='way'/>無</label>
+        <label><input type='radio' name='way'/>Slide</label>
+        <label><input type='radio' name='way'/>Slide2</label>
+        <label><input type='radio' name='way'/>Flip</label>
+        <label><input type='radio' name='way'/>Broken</label>
+      </div>
+    </div>
+  </body>
+</html>
+<!--=================================================================================================================-->

@@ -1,0 +1,12 @@
+{
+  "Version": "0.1.0",
+  "Install": {
+    "Entry": "",
+    "Backup": []
+  },
+  "Pack": {
+    "Entry": "../",
+    "Exclude": []
+  },
+  "Package": "Slideshow"
+}
